@@ -188,6 +188,8 @@ public class LinkedHashMap<K,V>
 
     /**
      * HashMap.Node subclass for normal LinkedHashMap entries.
+     * LinkedHashMap的内部节点Entry，其中通过继承HashMap的Node节点
+     * 并添加了before和after指针来实现前后元素的
      */
     static class Entry<K,V> extends HashMap.Node<K,V> {
         Entry<K,V> before, after;

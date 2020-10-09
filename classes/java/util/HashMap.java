@@ -1016,13 +1016,25 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @return a set view of the mappings contained in this map
      */
     public Set<Map.Entry<K,V>> entrySet() {
+        /*
+         HashMap内并没有主动去维护一个entrySet，而是通过实现EntrySet内部类
+         该内部类实现了Iterator<Map.Entry<K, V>>接口，使得EntrySet可以进行遍历
+         其中iterator方法通过返回内部类EntryIterator实现迭代功能
+        */
         Set<Map.Entry<K,V>> es;
         return (es = entrySet) == null ? (entrySet = new EntrySet()) : es;
     }
 
+    /**
+     * HashMap内部类，该类用于实现HashMap的entrySet方法
+     * EntrySet内部类实现了Iterator接口使之可以被遍历
+     * @see java.util.HashMap.HashIterator
+     */
     final class EntrySet extends AbstractSet<Map.Entry<K,V>> {
         public final int size()                 { return size; }
         public final void clear()               { HashMap.this.clear(); }
+
+        // 该方法为EntrySet可以被遍历的核心，即继承HashIterator的EntryIterator
         public final Iterator<Map.Entry<K,V>> iterator() {
             return new EntryIterator();
         }
@@ -1431,6 +1443,10 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     /* ------------------------------------------------------------ */
     // iterators
 
+    /**
+     * HashMap内部的哈希迭代器，所有对外的迭代接口都是通过此类实现的
+     * HashIterator本质是通过访问HashMap的数组元素来实现遍历功能
+     */
     abstract class HashIterator {
         Node<K,V> next;        // next entry to return
         Node<K,V> current;     // current entry
@@ -1451,6 +1467,9 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             return next != null;
         }
 
+        /**
+         * 获取下一个Node元素的方法
+         */
         final Node<K,V> nextNode() {
             Node<K,V>[] t;
             Node<K,V> e = next;
@@ -1458,6 +1477,25 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                 throw new ConcurrentModificationException();
             if (e == null)
                 throw new NoSuchElementException();
+            /*
+             如果next指针为空，则去寻找数组下一个入口的第一个Node元素
+
+             table                    next
+               ↓                       ↓
+              |1|-> Node1 -> Node2 -> null
+              |2|-> Node3 -> null
+              |3|-> Node4 -> Node5 -> null
+              ------------------ nextNode() ------------------
+              table
+               ↓
+              |1|-> Node1 -> Node2 -> null
+
+                    next
+                      ↓
+              |2|-> Node3 -> null
+              |3|-> Node4 -> Node5 -> null
+
+            */
             if ((next = (current = e).next) == null && (t = table) != null) {
                 do {} while (index < t.length && (next = t[index++]) == null);
             }
@@ -1487,6 +1525,10 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         public final V next() { return nextNode().value; }
     }
 
+    /**
+     * HashMap内部节点迭代器，继承自HashIterator
+     * @see java.util.HashMap.HashIterator
+     */
     final class EntryIterator extends HashIterator
         implements Iterator<Map.Entry<K,V>> {
         public final Map.Entry<K,V> next() { return nextNode(); }
