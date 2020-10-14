@@ -48,7 +48,9 @@ public class ReferenceQueue<T> {
         }
     }
 
+    // 特殊标记，表示对象引用没有关联任何引用队列，本身并不用来指明引用队列
     static ReferenceQueue<Object> NULL = new Null<>();
+    // 特殊标记，表示对象的引用已经被加入到引用队列中
     static ReferenceQueue<Object> ENQUEUED = new Null<>();
 
     static private class Lock { };
@@ -61,6 +63,7 @@ public class ReferenceQueue<T> {
             // Check that since getting the lock this reference hasn't already been
             // enqueued (and even then removed)
             ReferenceQueue<?> queue = r.queue;
+            // 对于没有关联引用队列（即引用队列为NULL）或者已经入队的引用，直接返回
             if ((queue == NULL) || (queue == ENQUEUED)) {
                 return false;
             }

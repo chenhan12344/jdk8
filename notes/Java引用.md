@@ -1,4 +1,4 @@
-# java.lang.ref.Reference
+# JAVA引用
 
 Java当中引用分为以下四种：
 
@@ -84,5 +84,83 @@ System.out.println(ref.get());  // 输出null，无法从虚引用中获取对�
 
 虚引用的作用在于，当垃圾收集器准备回收一个对象时，如果这个对象还有虚引用，垃圾收集器在回收完这个对象后将这个对象的虚引用添加到引用队列中，并且在与之关联的引用队列该虚引用出队前，不会彻底销毁该对象。因此，可以通过检查引用队列中的虚引用是否还存在来判断对象是否被回收了。
 
-# java.lang.ref.ReferenceQueue\<T\>
+# java.lang.Reference.ReferenceHandler
+
+```java
+// ReferenceHanlder继承自Thread类，因此是一个可运行的线程
+private static class ReferenceHandler extends Thread {
+    
+    private static void ensureClassInitialized(Class<?> clazz) {
+        try {
+            Class.forName(clazz.getName(), true, clazz.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw (Error) new NoClassDefFoundError(e.getMessage()).initCause(e);
+        }
+    }
+    static {
+        // pre-load and initialize InterruptedException and Cleaner *
+        // classes
+        // so that we don't get into trouble later in the run loop if there's
+        // memory shortage while loading/initializing them lazily.
+        ensureClassInitialized(InterruptedException.class);
+        ensureClassInitialized(Cleaner.class);
+    }
+    
+    //构造函数
+    ReferenceHandler(ThreadGroup g, String name) {
+        super(g, name);
+    }
+    // ReferenceHandler的主要作用，就是一直执行tryHandlePending
+    public void run() {
+        while (true) {
+            tryHandlePending(true);
+        }
+    }
+}
+
+static boolean tryHandlePending(boolean waitForNotify) {
+    Reference<Object> r;
+    Cleaner c;
+    try {
+        synchronized (lock) {
+            if (pending != null) {
+                r = pending;
+                // 'instanceof' might throw OutOfMemoryError sometimes
+                // so do this before un-linking 'r' from the 'pending' chain...
+                c = r instanceof Cleaner ? (Cleaner) r : null;
+                // unlink 'r' from 'pending' chain
+                pending = r.discovered;
+                r.discovered = null;
+            } else {
+                // The waiting on the lock may cause an OutOfMemoryError
+                // because it may try to allocate exception objects.
+                if (waitForNotify) {
+                    lock.wait();
+                }
+                // retry if waited
+                return waitForNotify;
+            }
+        }
+    } catch (OutOfMemoryError x) {
+        // Give other threads CPU time so they hopefully drop some live references
+        // and GC reclaims some space.
+        // Also prevent CPU intensive spinning in case 'r instanceof Cleaner' above
+        // persistently throws OOME for some time...
+        Thread.yield();
+        // retry
+        return true;
+    } catch (InterruptedException x) {
+        // retry
+        return true;
+    }
+    // Fast path for cleaners
+    if (c != null) {
+        c.clean();
+        return true;
+    }
+    ReferenceQueue<? super Object> q = r.queue;
+    if (q != ReferenceQueue.NULL) q.enqueue(r);
+    return true;
+}
+```
 
