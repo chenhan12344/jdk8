@@ -137,7 +137,8 @@ public abstract class Reference<T> {
         }
 
         static {
-            // pre-load and initialize InterruptedException and Cleaner classes
+            // pre-load and initialize InterruptedException and Cleaner *
+            // classes
             // so that we don't get into trouble later in the run loop if there's
             // memory shortage while loading/initializing them lazily.
             ensureClassInitialized(InterruptedException.class);

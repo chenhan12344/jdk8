@@ -558,6 +558,8 @@ public class ArrayList<E> extends AbstractList<E>
         modCount++;
 
         // clear to let GC do its work
+        // 这里没有直接给elementData赋值一个新的数组，而是将数组元素逐个置为null
+        // 这样做可以避免从新分配堆内存
         for (int i = 0; i < size; i++)
             elementData[i] = null;
 
